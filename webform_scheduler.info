@@ -1,0 +1,6 @@
+name = Webform Scheduler
+description = Allows webforms to have a start and end date for their submissions.
+package = Webform
+core = 7.x
+dependencies[] = webform
+dependencies[] = date_popup
