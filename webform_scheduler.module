@@ -1,0 +1,63 @@
+<?php
+/**
+ * @file
+ * This module allows webforms to have a start and end date for their
+ * submissions.
+ *
+ * @author Daniel Imhoff
+ */
+
+/**
+ * Implements hook_form_FORM_ID_alter() for webform_configure_form().
+ */
+function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_state) {
+  $form['#submit'][] = 'webform_scheduler_form_webform_configure_form_submit';
+
+  $format = variable_get('date_format_short', 'm/d/Y - H:i');
+
+  // These additions/modifications to the form elements are made if the
+  // date_popup module is available.
+  $date_popup = module_exists('date_popup') ? array(
+    '#type' => 'date_popup',
+    '#date_year_range' => '0:+3',
+    '#description' => null,
+  ) : array();
+
+  $form['scheduler'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Scheduler'),
+    '#description' => t('Specify dates and times to schedule when users are allowed to use this webform. Leave blank to disable this feature.'),
+    '#weight' => -2.5,
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+
+  $form['scheduler']['date_start'] = $date_popup + array(
+    '#type' => 'textfield',
+    '#title' => t('Start time'),
+    '#description' => t('E.g., @date', array('@date' => format_date(time(), 'custom', $format))),
+  );
+
+  $form['scheduler']['date_end_enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show end date'),
+  );
+
+  $form['scheduler']['date_end'] = $date_popup + array(
+    '#type' => 'textfield',
+    '#title' => t('End time'),
+    '#description' => t('E.g., @date', array('@date' => format_date(time(), 'custom', $format))),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="date_end_enabled"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+}
+
+/**
+ * Additional submit handler for saving webform scheduler settings.
+ */
+function webform_scheduler_form_webform_configure_form_submit(&$form, &$form_state) {
+  // Save settings.
+}
