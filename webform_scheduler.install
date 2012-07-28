@@ -1,0 +1,41 @@
+<?php
+/**
+ * @file
+ * Webform Scheduler module install/schema hooks.
+ *
+ * @author Daniel Imhoff
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function webform_scheduler_schema() {
+  $schema = array();
+
+  $schema['webform_scheduler'] = array(
+    'description' => 'Table for storing the information for scheduling webforms.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'The node identifier of a webform.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'begin' => array(
+        'description' => 'Timestamp of when the webform is scheduled to begin.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'end' => array(
+        'description' => 'Timestamp of when the webform is scheduled to end.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+
+  return $schema;
+}
