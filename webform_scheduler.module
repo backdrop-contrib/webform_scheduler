@@ -130,20 +130,67 @@ function webform_scheduler_form_webform_configure_form_submit(&$form, &$form_sta
 }
 
 /**
- * Fetch the scheduler settings and information of a webform by the node ID.
+ * Implementation of hook_node_load().
+ */
+function webform_scheduler_node_load($nodes, $types) {
+  $nids = array();
+
+  // Make an array of node IDs.
+  foreach ($nodes as $node) {
+    $nids[] = $node->nid;
+  }
+
+  // Use that array to get the scheduler settings for each node.
+  $scheduler_settings = _webform_scheduler_webform_scheduler_settings($nids);
+
+  if ($scheduler_settings !== FALSE) {
+    // Save the scheduler settings into the webform array and change the
+    // webform status to 0 if the scheduler settings require it.
+    foreach ($nodes as $node) {
+      if (in_array($node->type, webform_variable_get('webform_node_types'))) {
+        $node->webform['scheduler_start'] = $scheduler_settings[$node->nid]['begin'];
+        $node->webform['scheduler_end'] = $scheduler_settings[$node->nid]['end'];
+
+        if (($node->webform['scheduler_start'] && time() < (int) $node->webform['scheduler_start'])
+          || ($node->webform['scheduler_end'] && time() > (int) $node->webform['scheduler_end'])) {
+          $node->webform['status'] = 0;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Fetch the scheduler settings and information of webform(s) by the node ID.
  *
- * @param int $nid
- *   The node ID that the webform belongs.
+ * @param mixed $nid
+ *   The node ID that the webform belongs, or an array of node IDs.
  *
  * @return array
  *   A row of information represented as an associated array.
  */
 function _webform_scheduler_webform_scheduler_settings($nid) {
-  return db_select('webform_scheduler', 'w', array('fetch' => PDO::FETCH_ASSOC))
-    ->condition('w.nid', $nid)
-    ->fields('w')
-    ->execute()
-    ->fetchAssoc();
+  $query = db_select('webform_scheduler', 'w', array('fetch' => PDO::FETCH_ASSOC))
+    ->fields('w');
+
+  // If we were passed an array of node IDs, we fetch the scheduler
+  // settings for each node.
+  if (is_array($nid)) {
+    $db_or = db_or();
+    foreach ($nid as $nodeid) {
+      $db_or->condition('w.nid', $nodeid);
+    }
+    return $query
+      ->condition($db_or)
+      ->execute()
+      ->fetchAllAssoc('nid');
+  }
+  else {
+    return $query
+      ->condition('w.nid', $nid)
+      ->execute()
+      ->fetchAssoc();
+  }
 }
 
 /**
