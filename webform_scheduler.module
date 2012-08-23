@@ -136,6 +136,10 @@ function webform_scheduler_form_webform_configure_form_validate(&$form, &$form_s
 function webform_scheduler_form_webform_configure_form_submit(&$form, &$form_state) {
   $scheduler_settings = _webform_scheduler_webform_scheduler_settings($form['#node']->nid);
 
+  if (!isset($form_state['values']['date_start_timestamp'])) {
+    $form_state['values']['date_end_timestamp'] = 0;
+  }
+
   if (empty($scheduler_settings)
     || (isset($form_state['values']['date_start_timestamp']) ? $form_state['values']['date_start_timestamp'] : 0) !== $scheduler_settings['begin']
     || (isset($form_state['values']['date_end_timestamp']) ? $form_state['values']['date_end_timestamp'] : 0) !== $scheduler_settings['end']) {
@@ -165,6 +169,19 @@ function webform_scheduler_node_view($node, $view_mode) {
       $node->webform['status'] = 0;
     }
   }
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function webform_scheduler_node_delete($node) {
+  if (!in_array($node->type, webform_variable_get('webform_node_types'))) {
+    return;
+  }
+
+  db_delete('webform_scheduler')
+    ->condition('nid', $node->nid)
+    ->execute();
 }
 
 /**
