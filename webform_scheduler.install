@@ -39,3 +39,14 @@ function webform_scheduler_schema() {
 
   return $schema;
 }
+
+/**
+ * Implements hook_install().
+ */
+function webform_scheduler_install() {
+  db_update('system')
+    ->condition('name', 'webform_scheduler')
+    ->condition('type', 'module')
+    ->fields(array('weight' => -2))
+    ->execute();
+}

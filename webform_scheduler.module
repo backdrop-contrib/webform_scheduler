@@ -8,69 +8,83 @@
  */
 
 /**
+ * Implements hook_permission().
+ */
+function webform_scheduler_permission() {
+  return array(
+    'schedule webforms' => array(
+      'title' => t('Schedule webforms'),
+      'description' => t('Change a webform\'s start and end date, allowing a webform to be scheduled.'),
+    ),
+  );
+}
+
+/**
  * Implements hook_form_FORM_ID_alter() for webform_configure_form().
  */
 function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_state) {
-  $scheduler_settings = _webform_scheduler_webform_scheduler_settings($form['#node']->nid);
+  if (user_access('schedule webforms')) {
+    $scheduler_settings = _webform_scheduler_webform_scheduler_settings($form['#node']->nid);
 
-  $form['#validate'][] = 'webform_scheduler_form_webform_configure_form_validate';
-  $form['#submit'][] = 'webform_scheduler_form_webform_configure_form_submit';
+    $form['#validate'][] = 'webform_scheduler_form_webform_configure_form_validate';
+    $form['#submit'][] = 'webform_scheduler_form_webform_configure_form_submit';
 
-  $format = _webform_scheduler_date_format();
+    $format = _webform_scheduler_date_format();
 
-  if (FALSE !== $scheduler_settings) {
-    $start_date = $scheduler_settings['begin'] != 0 ? new DateObject($scheduler_settings['begin']) : NULL;
-    $end_date = $scheduler_settings['end'] != 0 ? new DateObject($scheduler_settings['end']) : NULL;
-  }
+    $now = new DateObject();
+    $now_formatted = $now->format($format);
 
-  $start_date_formatted = isset($start_date) ? $start_date->format($format) : NULL;
-  $end_date_formatted = isset($end_date) ? $end_date->format($format) : NULL;
+    if (!empty($scheduler_settings)) {
+      $start_date = $scheduler_settings['begin'] != 0 ? new DateObject($scheduler_settings['begin']) : NULL;
+      $end_date = $scheduler_settings['end'] != 0 ? new DateObject($scheduler_settings['end']) : NULL;
+    }
 
-  $form['scheduler'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Scheduler'),
-    '#description' => t('Specify dates and times to schedule when users are allowed to use this webform. Leave blank to disable this feature.'),
-    '#weight' => -2.5,
-    '#collapsible' => TRUE,
-    '#collapsed' => empty($scheduler_settings['begin']),
-  );
-
-  $form['scheduler']['date_start'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Start time'),
-    '#description' => t('E.g., @date', array('@date' => format_date(time(), 'custom', $format))),
-    '#default_value' => $start_date_formatted,
-  );
-
-  $form['scheduler']['date_end_enabled'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Enable end date'),
-    '#default_value' => FALSE !== $scheduler_settings && $scheduler_settings['end'] > 0 ? 1 : 0,
-  );
-
-  $form['scheduler']['date_end'] = array(
-    '#type' => 'textfield',
-    '#title' => t('End time'),
-    '#description' => t('E.g., @date', array('@date' => format_date(time(), 'custom', $format))),
-    '#states' => array(
-      'visible' => array(
-        ':input[name="date_end_enabled"]' => array('checked' => TRUE),
-      ),
-    ),
-    '#default_value' => $end_date_formatted,
-  );
-
-  // These additions/modifications to the form elements are made if the
-  // date_popup module is available.
-  if (module_exists('date_popup')) {
-    $date_popup = array(
-      '#type' => 'date_popup',
-      '#date_year_range' => '0:+3',
-      '#description' => NULL,
+    $form['scheduler'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Scheduler'),
+      '#description' => t('Specify dates and times to schedule when users are allowed to use this webform. Leave blank to disable this feature.'),
+      '#weight' => -2.5,
+      '#collapsible' => TRUE,
+      '#collapsed' => !isset($start_date),
     );
 
-    $form['scheduler']['date_start'] = array_merge($form['scheduler']['date_start'], $date_popup);
-    $form['scheduler']['date_end'] = array_merge($form['scheduler']['date_end'], $date_popup);
+    $form['scheduler']['date_start'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Start time'),
+      '#description' => t('E.g., @date', array('@date' => $now_formatted)),
+      '#default_value' => isset($start_date) ? $start_date->format($format) : NULL,
+    );
+
+    $form['scheduler']['date_end_enabled'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Enable end date'),
+      '#default_value' => isset($end_date) && $end_date->getTimestamp() > 0 ? 1 : 0,
+    );
+
+    $form['scheduler']['date_end'] = array(
+      '#type' => 'textfield',
+      '#title' => t('End time'),
+      '#description' => t('E.g., @date', array('@date' => $now_formatted)),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="date_end_enabled"]' => array('checked' => TRUE),
+        ),
+      ),
+      '#default_value' => isset($end_date) ? $end_date->format($format) : NULL,
+    );
+
+    // These additions/modifications to the form elements are made if the
+    // date_popup module is available.
+    if (module_exists('date_popup')) {
+      $date_popup = array(
+        '#type' => 'date_popup',
+        '#date_year_range' => '0:+3',
+        '#description' => NULL,
+      );
+
+      $form['scheduler']['date_start'] = array_merge($form['scheduler']['date_start'], $date_popup);
+      $form['scheduler']['date_end'] = array_merge($form['scheduler']['date_end'], $date_popup);
+    }
   }
 }
 
@@ -122,7 +136,7 @@ function webform_scheduler_form_webform_configure_form_validate(&$form, &$form_s
 function webform_scheduler_form_webform_configure_form_submit(&$form, &$form_state) {
   $scheduler_settings = _webform_scheduler_webform_scheduler_settings($form['#node']->nid);
 
-  if (FALSE === $scheduler_settings
+  if (empty($scheduler_settings)
     || (isset($form_state['values']['date_start_timestamp']) ? $form_state['values']['date_start_timestamp'] : 0) !== $scheduler_settings['begin']
     || (isset($form_state['values']['date_end_timestamp']) ? $form_state['values']['date_end_timestamp'] : 0) !== $scheduler_settings['end']) {
     $record = array(
@@ -132,37 +146,23 @@ function webform_scheduler_form_webform_configure_form_submit(&$form, &$form_sta
     );
 
     // Insert or update the scheduler settings of this webform.
-    drupal_write_record('webform_scheduler', $record, FALSE === $scheduler_settings ? array() : 'nid');
+    drupal_write_record('webform_scheduler', $record, empty($scheduler_settings) ? array() : 'nid');
   }
 }
 
 /**
- * Implementation of hook_node_load().
+ * Implements hook_node_view().
  */
-function webform_scheduler_node_load($nodes, $types) {
-  $nids = array();
+function webform_scheduler_node_view($node, $view_mode) {
+  $scheduler_settings = _webform_scheduler_webform_scheduler_settings($node->nid);
 
-  // Make an array of node IDs.
-  foreach ($nodes as $node) {
-    $nids[] = $node->nid;
-  }
+  if (!empty($scheduler_settings)) {
+    $node->webform['scheduler_start'] = (int) $scheduler_settings['begin'];
+    $node->webform['scheduler_end'] = (int) $scheduler_settings['end'];
 
-  // Use that array to get the scheduler settings for each node.
-  $scheduler_settings = _webform_scheduler_webform_scheduler_settings($nids);
-
-  if ($scheduler_settings !== FALSE) {
-    // Save the scheduler settings into the webform array and change the
-    // webform status to 0 if the scheduler settings require it.
-    foreach ($nodes as $node) {
-      if (in_array($node->type, webform_variable_get('webform_node_types'))) {
-        $node->webform['scheduler_start'] = $scheduler_settings[$node->nid]['begin'];
-        $node->webform['scheduler_end'] = $scheduler_settings[$node->nid]['end'];
-
-        if (($node->webform['scheduler_start'] && time() < (int) $node->webform['scheduler_start'])
-          || ($node->webform['scheduler_end'] && time() > (int) $node->webform['scheduler_end'])) {
-          $node->webform['status'] = 0;
-        }
-      }
+    if ((!empty($node->webform['scheduler_start']) && time() < $node->webform['scheduler_start'])
+      || (!empty($node->webform['scheduler_end']) && time() > $node->webform['scheduler_end'])) {
+      $node->webform['status'] = 0;
     }
   }
 }
@@ -170,34 +170,18 @@ function webform_scheduler_node_load($nodes, $types) {
 /**
  * Fetch the scheduler settings and information of webform(s) by the node ID.
  *
- * @param mixed $nid
- *   The node ID that the webform belongs, or an array of node IDs.
+ * @param int $nid
+ *   The node ID that the webform belongs.
  *
  * @return array
- *   A row of information represented as an associated array.
+ *   A row of information represented as an associative array.
  */
 function _webform_scheduler_webform_scheduler_settings($nid) {
-  $query = db_select('webform_scheduler', 'w', array('fetch' => PDO::FETCH_ASSOC))
-    ->fields('w');
-
-  // If we were passed an array of node IDs, we fetch the scheduler
-  // settings for each node.
-  if (is_array($nid)) {
-    $db_or = db_or();
-    foreach ($nid as $nodeid) {
-      $db_or->condition('w.nid', $nodeid);
-    }
-    return $query
-      ->condition($db_or)
-      ->execute()
-      ->fetchAllAssoc('nid');
-  }
-  else {
-    return $query
-      ->condition('w.nid', $nid)
-      ->execute()
-      ->fetchAssoc();
-  }
+  return db_select('webform_scheduler', 'w', array('fetch' => PDO::FETCH_ASSOC))
+    ->fields('w')
+    ->condition('w.nid', $nid)
+    ->execute()
+    ->fetchAssoc();
 }
 
 /**
