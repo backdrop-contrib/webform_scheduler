@@ -98,7 +98,7 @@ function webform_scheduler_form_webform_configure_form_validate(&$form, &$form_s
     }
     // Else, we can save the timestamp which is used by the submit handler.
     else {
-      $values['date_start_timestamp'] = $start_date->getTimestamp();
+      $values['date_start_timestamp'] = $start_date->format('U');
     }
   }
 
@@ -109,7 +109,7 @@ function webform_scheduler_form_webform_configure_form_validate(&$form, &$form_s
       form_set_error('date_end', $end_date->errors['invalid'] . ' ' . (!module_exists('date_popup') ? t('Install and enable the Date Popup module included in !date_link for an easy pop-up calendar.', array('!date_link' => l('Date', 'http://drupal.org/project/date'))) : ''));
     }
     else {
-      $values['date_end_timestamp'] = $end_date->getTimestamp();
+      $values['date_end_timestamp'] = $end_date->format('U');
     }
   }
 
