@@ -12,3 +12,7 @@
   padding-left: 10px;
   padding-right: 10px;
 }
+
+#edit-scheduler .form-item-scheduler-show-or-hide {
+  clear: both;
+}

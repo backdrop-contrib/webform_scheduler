@@ -24,7 +24,7 @@ function webform_scheduler_permission() {
  */
 function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_state) {
   if (user_access('schedule webforms')) {
-    $scheduler_settings = _webform_scheduler_webform_scheduler_settings($form['#node']->nid);
+    $settings = _webform_scheduler_webform_scheduler_settings($form['#node']->nid);
 
     $form['#validate'][] = 'webform_scheduler_form_webform_configure_form_validate';
     $form['#submit'][] = 'webform_scheduler_form_webform_configure_form_submit';
@@ -35,9 +35,9 @@ function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_stat
     $now = new DateObject();
     $now_formatted = $now->format($format);
 
-    if (!empty($scheduler_settings)) {
-      $start_date = $scheduler_settings['begin'] != 0 ? new DateObject($scheduler_settings['begin']) : NULL;
-      $end_date = $scheduler_settings['end'] != 0 ? new DateObject($scheduler_settings['end']) : NULL;
+    if (!empty($settings)) {
+      $start_date = $settings['begin'] != 0 ? new DateObject($settings['begin']) : NULL;
+      $end_date = $settings['end'] != 0 ? new DateObject($settings['end']) : NULL;
     }
 
     $form['scheduler'] = array(
@@ -62,6 +62,17 @@ function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_stat
       '#title' => t('End time'),
       '#description' => t('E.g., @date', array('@date' => $now_formatted)),
       '#default_value' => isset($end_date) ? $end_date->format($format) : NULL,
+    );
+
+    $form['scheduler']['show_or_hide'] = array(
+      '#type' => 'radios',
+      '#title' => t('Access restriction method'),
+      '#default_value' => isset($settings['show_or_hide']) ? (int) $settings['show_or_hide'] : 0,
+      '#options' => array(
+        0 => t('Hide the webform'),
+        1 => t('Show the webform, but disable components'),
+      ),
+      '#description' => t('How should user access to the webform be restricted? Hiding the webform displays the message "Submissions for this form are closed." whereas the webform can alternatively be shown with disabled components.'),
     );
 
     // These additions/modifications to the form elements are made if the
@@ -127,19 +138,21 @@ function webform_scheduler_form_webform_configure_form_validate(&$form, &$form_s
  */
 function webform_scheduler_form_webform_configure_form_submit(&$form, &$form_state) {
   $values =& $form_state['values']['scheduler'];
-  $scheduler_settings = _webform_scheduler_webform_scheduler_settings($form['#node']->nid);
+  $settings = _webform_scheduler_webform_scheduler_settings($form['#node']->nid);
 
-  if (empty($scheduler_settings)
-    || (isset($values['date_start_timestamp']) ? $values['date_start_timestamp'] : 0) !== $scheduler_settings['begin']
-    || (isset($values['date_end_timestamp']) ? $values['date_end_timestamp'] : 0) !== $scheduler_settings['end']) {
+  if (empty($settings) ||
+    (int) $values['show_or_hide'] !== (int) $settings['show_or_hide'] ||
+    (isset($values['date_start_timestamp']) ? (int) $values['date_start_timestamp'] : 0) !== (int) $settings['begin'] ||
+    (isset($values['date_end_timestamp']) ? (int) $values['date_end_timestamp'] : 0) !== (int) $settings['end']) {
     $record = array(
       'nid' => $form['#node']->nid,
       'begin' => isset($values['date_start_timestamp']) ? $values['date_start_timestamp'] : 0,
       'end' => isset($values['date_end_timestamp']) ? $values['date_end_timestamp'] : 0,
+      'show_or_hide' => (int) $values['show_or_hide'],
     );
 
     // Insert or update the scheduler settings of this webform.
-    drupal_write_record('webform_scheduler', $record, empty($scheduler_settings) ? array() : 'nid');
+    drupal_write_record('webform_scheduler', $record, empty($settings) ? array() : 'nid');
   }
 }
 
@@ -163,16 +176,37 @@ function webform_scheduler_node_view($node, $view_mode) {
     return;
   }
 
-  $scheduler_settings = _webform_scheduler_webform_scheduler_settings($node->nid);
+  $settings = _webform_scheduler_webform_scheduler_settings($node->nid);
 
-  if (!empty($scheduler_settings)) {
-    $node->webform['scheduler_start'] = (int) $scheduler_settings['begin'];
-    $node->webform['scheduler_end'] = (int) $scheduler_settings['end'];
+  $node->webform['scheduler_start'] = isset($settings['begin']) ? (int) $settings['begin'] : 0;
+  $node->webform['scheduler_end'] = isset($settings['end']) ? (int) $settings['end'] : 0;
+  $node->webform['scheduler_show'] = isset($settings['show_or_hide']) && $settings['show_or_hide'] != 0;
 
-    if ((!empty($node->webform['scheduler_start']) && time() < $node->webform['scheduler_start'])
-      || (!empty($node->webform['scheduler_end']) && time() > $node->webform['scheduler_end'])) {
-      $node->webform['status'] = 0;
+  if (!$node->webform['scheduler_show'] && webform_scheduler_webform_disabled($node)) {
+    $node->webform['status'] = 0;
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function webform_scheduler_form_alter(&$form, &$form_state) {
+  if (!isset($form['#node']) || empty($form['#node']->webform) || !isset($form['submitted'])) {
+    return;
+  }
+
+  if ($form['#node']->webform['status'] != 0 && $form['#node']->webform['scheduler_show'] && webform_scheduler_webform_disabled($form['#node'])) {
+    $elements = array();
+    _webform_scheduler_flatten_components($form['submitted'], $elements);
+    _webform_scheduler_flatten_components($form['actions'], $elements);
+
+    foreach ($elements as &$element) {
+      $element['#attributes']['disabled'] = TRUE;
     }
+
+    // Yes, this is evil. Think of a better way.
+    $form['#validate'] = array();
+    $form['#submit'] = array();
   }
 }
 
@@ -190,10 +224,27 @@ function webform_scheduler_node_delete($node) {
 }
 
 /**
+ * Checks to see if the webform is disabled or not.
+ *
+ * @param int $node
+ *   The node stdClass to which this webform belongs.
+ * @return boolean
+ *   TRUE if the webform under the node ID is disabled, FALSE otherwise.
+ */
+function webform_scheduler_webform_disabled(&$node) {
+  if (($node->webform['scheduler_start'] > 0 && REQUEST_TIME < $node->webform['scheduler_start']) ||
+    ($node->webform['scheduler_end'] > 0 && REQUEST_TIME > $node->webform['scheduler_end'])) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
  * Fetch the scheduler settings and information of webform(s) by the node ID.
  *
  * @param int $nid
- *   The node ID that the webform belongs.
+ *   The node ID to which the webform belongs.
  *
  * @return array
  *   A row of information represented as an associative array.
@@ -210,8 +261,26 @@ function _webform_scheduler_webform_scheduler_settings($nid) {
  * Fetch the date/time format for this module.
  *
  * @return string
- *   A date/time format understandable by PHP's date()
+ *   A date/time format understandable by PHP's date().
  */
 function _webform_scheduler_date_format() {
   return module_exists('date_popup') ? DATE_FORMAT_DATETIME : variable_get('date_format_short', 'm/d/Y - H:i');
+}
+
+/**
+ * Flattens the webform component tree into an associative array keyed by the
+ * form key of the component.
+ *
+ * @param array $element
+ *   Usually $form['submitted'].
+ * @param array $elements
+ *   The elements array, passed by reference to add the elements to.
+ */
+function _webform_scheduler_flatten_components(&$element, &$elements) {
+  if (is_array($element)) {
+    foreach (element_children($element) as $element_key) {
+      $elements[$element_key] =& $element[$element_key];
+      _webform_scheduler_flatten_components($element[$element_key], $elements);
+    }
+  }
 }

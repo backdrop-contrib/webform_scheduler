@@ -33,6 +33,14 @@ function webform_scheduler_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'show_or_hide' => array(
+        'description' => 'Show (and disable) or hide the webform.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'default' => 0,
+        'not null' => TRUE,
+      ),
     ),
     'primary key' => array('nid'),
   );
@@ -49,4 +57,20 @@ function webform_scheduler_install() {
     ->condition('type', 'module')
     ->fields(array('weight' => -2))
     ->execute();
+}
+
+/**
+ * Add a column for showing (and disabling) or hiding the webform.
+ */
+function webform_scheduler_update_7001() {
+  if (!db_field_exists('webform_scheduler', 'show_or_hide')) {
+    db_add_field('webform_scheduler', 'show_or_hide', array(
+      'description' => 'Show (and disable) or hide the webform.',
+      'type' => 'int',
+      'size' => 'tiny',
+      'unsigned' => TRUE,
+      'default' => 0,
+      'not null' => TRUE,
+    ));
+  }
 }
