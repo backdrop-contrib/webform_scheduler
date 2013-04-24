@@ -33,12 +33,12 @@ function webform_scheduler_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
-      'show_or_hide' => array(
-        'description' => 'Show (and disable) or hide the webform.',
+      'restriction_method' => array(
+        'description' => 'Method for restricting user access to closed webforms.',
         'type' => 'int',
         'size' => 'tiny',
         'unsigned' => TRUE,
-        'default' => 0,
+        'default' => 1,
         'not null' => TRUE,
       ),
     ),
@@ -73,4 +73,22 @@ function webform_scheduler_update_7001() {
       'not null' => TRUE,
     ));
   }
+}
+
+/**
+ * Rename show_or_hide field for more flexibility.
+ */
+function webform_scheduler_update_7002() {
+  db_change_field('webform_scheduler', 'show_or_hide', 'restriction_method', array(
+    'description' => 'Method for restricting user access to closed webforms.',
+    'type' => 'int',
+    'size' => 'tiny',
+    'unsigned' => TRUE,
+    'default' => 1,
+    'not null' => TRUE,
+  ));
+
+  db_update('webform_scheduler')
+    ->expression('restriction_method', 'restriction_method + :incr', array(':incr' => 1))
+    ->execute();
 }
