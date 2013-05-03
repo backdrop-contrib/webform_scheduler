@@ -24,7 +24,7 @@ function webform_scheduler_permission() {
  */
 function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_state) {
   if (user_access('schedule webforms')) {
-    $settings = _webform_scheduler_webform_scheduler_settings($form['#node']->nid);
+    $settings = _webform_scheduler_webform_scheduler_settings($form['nid']['#value']);
 
     $form['#validate'][] = 'webform_scheduler_form_webform_configure_form_validate';
     $form['#submit'][] = 'webform_scheduler_form_webform_configure_form_submit';
@@ -138,14 +138,14 @@ function webform_scheduler_form_webform_configure_form_validate(&$form, &$form_s
  */
 function webform_scheduler_form_webform_configure_form_submit(&$form, &$form_state) {
   $values =& $form_state['values']['scheduler'];
-  $settings = _webform_scheduler_webform_scheduler_settings($form['#node']->nid);
+  $settings = _webform_scheduler_webform_scheduler_settings($form['nid']['#value']);
 
   if (empty($settings) ||
     (isset($values['date_start_timestamp']) ? (int) $values['date_start_timestamp'] : 0) !== (int) $settings['begin'] ||
     (isset($values['date_end_timestamp']) ? (int) $values['date_end_timestamp'] : 0) !== (int) $settings['end'] ||
     (int) $values['restriction_method'] !== (int) $settings['restriction_method']) {
     $record = array(
-      'nid' => $form['#node']->nid,
+      'nid' => $form['nid']['#value'],
       'begin' => isset($values['date_start_timestamp']) ? $values['date_start_timestamp'] : 0,
       'end' => isset($values['date_end_timestamp']) ? $values['date_end_timestamp'] : 0,
       'restriction_method' => (int) $values['restriction_method'],
@@ -163,7 +163,8 @@ function webform_scheduler_date_popup_pre_validate_alter($element, &$form_state,
   if (0 === strpos($element['#name'], 'scheduler[date_')) {
     // If date is given but time is not, give midnight as the time.
     if (!empty($input['date']) && empty($input['time'])) {
-      $input['time'] = date(end(explode(' ', $element['#date_format'])), strtotime('today midnight'));
+      $exploded_format = explode(' ', $element['#date_format']);
+      $input['time'] = date(end($exploded_format), strtotime('today midnight'));
     }
   }
 }
