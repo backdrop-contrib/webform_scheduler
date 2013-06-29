@@ -43,7 +43,9 @@ function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_stat
     $form['scheduler'] = array(
       '#type' => 'fieldset',
       '#title' => t('Scheduler'),
-      '#description' => t('Specify dates and times to schedule when users are allowed to use this webform.'),
+      '#description' => t('Specify dates and times to schedule when users are allowed to use this webform.<br />If the webform\'s overall status is set to %Closed under Submission settings, it will remain closed regardless of Scheduler settings.', array(
+        '%Closed' => t('Closed'),
+      )),
       '#weight' => -2.5,
       '#collapsible' => TRUE,
       '#collapsed' => !isset($start_date) && !isset($end_date),
