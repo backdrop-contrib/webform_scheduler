@@ -212,7 +212,7 @@ function webform_scheduler_node_view($node, $view_mode) {
 function webform_scheduler_form_webform_client_form_alter(&$form, &$form_state) {
   $node = $form['#node'];
 
-  if ($node->webform['scheduler']['disabled'] && $node->webform['status'] !== 0) {
+  if (isset($node->webform['scheduler']) && $node->webform['scheduler']['disabled'] && $node->webform['status'] !== 0) {
     if ($node->webform['scheduler']['restriction_method'] === 2) {
       $form['#disabled'] = TRUE;
     }
