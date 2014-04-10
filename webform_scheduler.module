@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * This module allows webforms to have a start and end date for their
@@ -141,15 +142,15 @@ function webform_scheduler_form_webform_configure_form_validate(&$form, &$form_s
 function webform_scheduler_form_webform_configure_form_submit(&$form, &$form_state) {
   $values =& $form_state['values']['scheduler'];
   $settings = _webform_scheduler_webform_scheduler_settings($form['nid']['#value']);
-
+      
   if (empty($settings) ||
     (isset($values['date_start_timestamp']) ? (int) $values['date_start_timestamp'] : 0) !== (int) $settings['begin'] ||
     (isset($values['date_end_timestamp']) ? (int) $values['date_end_timestamp'] : 0) !== (int) $settings['end'] ||
     (int) $values['restriction_method'] !== (int) $settings['restriction_method']) {
     $record = array(
       'nid' => $form['nid']['#value'],
-      'begin' => isset($values['date_start_timestamp']) ? $values['date_start_timestamp'] : 0,
-      'end' => isset($values['date_end_timestamp']) ? $values['date_end_timestamp'] : 0,
+      'begin_date' => isset($values['date_start_timestamp']) ? $values['date_start_timestamp'] : 0,
+      'end_date' => isset($values['date_end_timestamp']) ? $values['date_end_timestamp'] : 0,
       'restriction_method' => (int) $values['restriction_method'],
     );
 
@@ -259,11 +260,16 @@ function webform_scheduler_webform_disabled($node) {
  *   A row of information represented as an associative array.
  */
 function _webform_scheduler_webform_scheduler_settings($nid) {
-  return db_select('webform_scheduler', 'w', array('fetch' => PDO::FETCH_ASSOC))
+  $db_settings = db_select('webform_scheduler', 'w', array('fetch' => PDO::FETCH_ASSOC))
     ->fields('w')
     ->condition('w.nid', $nid)
     ->execute()
     ->fetchAssoc();
+  if($db_settings){
+    $db_settings['begin'] = $db_settings['begin_date'];
+    $db_settings['end'] =  $db_settings['end_date'];   
+  }
+  return $db_settings;
 }
 
 /**
