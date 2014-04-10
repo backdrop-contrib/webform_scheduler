@@ -142,7 +142,7 @@ function webform_scheduler_form_webform_configure_form_validate(&$form, &$form_s
 function webform_scheduler_form_webform_configure_form_submit(&$form, &$form_state) {
   $values =& $form_state['values']['scheduler'];
   $settings = _webform_scheduler_webform_scheduler_settings($form['nid']['#value']);
-      
+
   if (empty($settings) ||
     (isset($values['date_start_timestamp']) ? (int) $values['date_start_timestamp'] : 0) !== (int) $settings['begin'] ||
     (isset($values['date_end_timestamp']) ? (int) $values['date_end_timestamp'] : 0) !== (int) $settings['end'] ||
@@ -265,10 +265,12 @@ function _webform_scheduler_webform_scheduler_settings($nid) {
     ->condition('w.nid', $nid)
     ->execute()
     ->fetchAssoc();
-  if($db_settings){
+
+  if ($db_settings){
     $db_settings['begin'] = $db_settings['begin_date'];
-    $db_settings['end'] =  $db_settings['end_date'];   
+    $db_settings['end'] =  $db_settings['end_date'];
   }
+
   return $db_settings;
 }
 
