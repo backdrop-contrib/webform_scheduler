@@ -222,16 +222,13 @@ function webform_scheduler_node_view($node, $view_mode) {
       break;
     case 1:
       $node->webform['status'] = 0;
-      break;
     case 2:
       // @see webform_scheduler_form_webform_client_form_alter()
 
       if (($node->webform['scheduler']['begin'] > 0 && REQUEST_TIME < $node->webform['scheduler']['begin']) && $node->webform['scheduler']['msg_before'] != '') {
-        drupal_set_message(t($node->webform['scheduler']['msg_before']));
+        drupal_set_message(t($node->webform['scheduler']['msg_before']), 'warning');
       } elseif (($node->webform['scheduler']['end'] > 0 && REQUEST_TIME > $node->webform['scheduler']['end']) && $node->webform['scheduler']['msg_after'] != '') {
-        drupal_set_message(t($node->webform['scheduler']['msg_after']));
-      } else {
-        drupal_set_message(t('Submissions for this form are closed.'));
+        drupal_set_message(t($node->webform['scheduler']['msg_after']), 'warning');
       }
       break;
     }
