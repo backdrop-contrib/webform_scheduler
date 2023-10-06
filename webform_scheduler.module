@@ -5,7 +5,6 @@
  * This module allows webforms to have a start and end date for their
  * submissions.
  *
- * @author Daniel Imhoff
  */
 
 /**
@@ -33,12 +32,13 @@ function webform_scheduler_form_webform_configure_form_alter($form, $form_state)
 
     $format = _webform_scheduler_date_format();
 
-    $now = new DateObject();
+    /* gto1: swapping out DateObject for DateTime 6 places */
+    $now = new DateTime();
     $now_formatted = $now->format($format);
 
     if (!empty($settings)) {
-      $start_date = $settings['begin'] != 0 ? new DateObject($settings['begin']) : NULL;
-      $end_date = $settings['end'] != 0 ? new DateObject($settings['end']) : NULL;
+      $start_date = $settings['begin'] != 0 ? new DateTime($settings['begin']) : NULL;
+      $end_date = $settings['end'] != 0 ? new DateTime($settings['end']) : NULL;
     }
 
     $form['scheduler'] = array(
@@ -121,7 +121,7 @@ function webform_scheduler_form_webform_configure_form_validate($form, $form_sta
   if (!empty($values['date_start'])) {
     // Make a new DateObject (supplied by date_api) from the user input.
 
-    $start_date = new DateObject($values['date_start'] . (module_exists('date_popup') ? ':00' : ''), NULL, $format);
+    $start_date = new DateTime($values['date_start'] . (module_exists('date_popup') ? ':00' : ''), NULL, $format);
 
     // If there are any mismatches between the user input and the expected
 
@@ -140,7 +140,7 @@ function webform_scheduler_form_webform_configure_form_validate($form, $form_sta
   }
 
   if (!empty($values['date_end'])) {
-    $end_date = new DateObject($values['date_end'] . (module_exists('date_popup') ? ':00' : ''), NULL, $format);
+    $end_date = new DateTime($values['date_end'] . (module_exists('date_popup') ? ':00' : ''), NULL, $format);
 
     if (isset($end_date->errors['invalid'])) {
       form_set_error('date_end', $end_date->errors['invalid'] . ' ' . (!module_exists('date_popup')?t('Install and enable the Date Popup module included in !date_link for an easy pop-up calendar.', array('!date_link' => l('Date', 'http://drupal.org/project/date'))) : ''));
