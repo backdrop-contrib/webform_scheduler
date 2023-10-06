@@ -70,83 +70,14 @@ function webform_scheduler_install() {
     ->execute();
 }
 
-/**
- * Add a column for showing (and disabling) or hiding the webform.
- */
-function webform_scheduler_update_7001() {
-  if (!db_field_exists('webform_scheduler', 'show_or_hide')) {
-    db_add_field('webform_scheduler', 'show_or_hide', array(
-      'description' => 'Show (and disable) or hide the webform.',
-      'type' => 'int',
-      'size' => 'tiny',
-      'unsigned' => TRUE,
-      'default' => 0,
-      'not null' => TRUE,
-    ));
-  }
-}
+// TODO The old hook_update_N functions cannot be applied to Backdrop.
+function webform_scheduler_update_7001() { }
 
-/**
- * Rename show_or_hide field for more flexibility.
- */
-function webform_scheduler_update_7002() {
-  db_change_field('webform_scheduler', 'show_or_hide', 'restriction_method', array(
-    'description' => 'Method for restricting user access to closed webforms.',
-    'type' => 'int',
-    'size' => 'tiny',
-    'unsigned' => TRUE,
-    'default' => 1,
-    'not null' => TRUE,
-  ));
+// TODO The old hook_update_N functions cannot be applied to Backdrop.
+function webform_scheduler_update_7002() { }
 
-  db_update('webform_scheduler')
-    ->expression('restriction_method', 'restriction_method + :incr', array(':incr' => 1))
-    ->execute();
-}
+// TODO The old hook_update_N functions cannot be applied to Backdrop.
+function webform_scheduler_update_7003() { }
 
-/**
- * Module installation error when on PostgreSQL due to use of reserved keyword.
- */
-function webform_scheduler_update_7003() {
-  db_change_field('webform_scheduler', 'begin', 'begin_date',
-    array(
-      'description' => 'Timestamp of when the webform is scheduled to begin.',
-      'type' => 'int',
-      'not null' => TRUE,
-      'default' => 0,
-     )
-  );
-
-  db_change_field('webform_scheduler', 'end', 'end_date',
-    array(
-      'description' => 'Timestamp of when the webform is scheduled to end.',
-      'type' => 'int',
-      'not null' => TRUE,
-      'default' => 0,
-    )
-  );
-}
-
-/**
- * Add column for custom message.
- */
-function webform_scheduler_update_7004() {
-  if (!db_field_exists('webform_scheduler', 'msg_before')) {
-    db_add_field('webform_scheduler', 'msg_before', array(
-      'description' => 'Message to display before the webform is scheduled to begin.',
-      'type' => 'varchar',
-      'length' => '128',
-      'not null' => false,
-	 'default' => null,
-    ));
-  }
-  if (!db_field_exists('webform_scheduler', 'msg_after')) {
-    db_add_field('webform_scheduler', 'msg_after', array(
-      'description' => 'Message to display after the webform is scheduled to end.',
-      'type' => 'varchar',
-      'length' => '128',
-      'not null' => false,
-	 'default' => null,
-    ));
-  }
-}
+// TODO The old hook_update_N functions cannot be applied to Backdrop.
+function webform_scheduler_update_7004() { }
