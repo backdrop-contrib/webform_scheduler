@@ -22,24 +22,18 @@ function webform_scheduler_permission() {
 /**
  * Implements hook_form_FORM_ID_alter() for webform_configure_form().
  */
-function webform_scheduler_form_webform_configure_form_alter($form, $form_state) {
+function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_state, $form_id) {
   if (user_access('schedule webforms')) {
+    $start_date = time();
+    $end_date = time();
     $settings = _webform_scheduler_webform_scheduler_settings($form['nid']['#value']);
 
     $form['#validate'][] = 'webform_scheduler_form_webform_configure_form_validate';
     $form['#submit'][] = 'webform_scheduler_form_webform_configure_form_submit';
-    $form['#attached']['css'][] = backdrop_get_path('module', 'webform_scheduler') . '/webform_scheduler.admin.css';
+    $form['#attached']['css'][] = backdrop_get_path('module', 'webform_scheduler') . '/css/webform_scheduler.admin.css';
 
-    $format = _webform_scheduler_date_format();
-
-    /* gto1: swapping out DateObject for DateTime 6 places */
-    $now = new DateTime();
-    $now_formatted = $now->format($format);
-
-    if (!empty($settings)) {
-      $start_date = $settings['begin'] != 0 ? new DateTime($settings['begin']) : NULL;
-      $end_date = $settings['end'] != 0 ? new DateTime($settings['end']) : NULL;
-    }
+    $start_date = (!empty($settings['begin_date'])) ? $settings['begin_date'] : NULL;
+    $end_date = (!empty($settings['end_date'])) ? $settings['end_date'] : NULL;
 
     $form['scheduler'] = array(
       '#type' => 'fieldset',
@@ -53,18 +47,39 @@ function webform_scheduler_form_webform_configure_form_alter($form, $form_state)
       '#tree' => TRUE,
     );
 
+    $date_attributes = array(
+      'date' => array(
+        'min' => date('Y-m-d'),
+        'max' => date('Y-m-d', strtotime('+3 years')),
+        'placeholder' => t('e.g. @date', array(
+          '@date' => format_date(REQUEST_TIME, 'custom', DATE_FORMAT_DATE)
+        )),
+      ),
+      'time' => array(
+        'placeholder' => t('e.g. @date', array(
+          '@date' => format_date(REQUEST_TIME, 'custom', DATE_FORMAT_TIME)
+        )),
+      ),
+    );
+
     $form['scheduler']['date_start'] = array(
-      '#type' => 'textfield',
+      '#type' => 'html_datetime',
       '#title' => t('Start time'),
-      '#description' => t('E.g., @date', array('@date' => $now_formatted)),
-      '#default_value' => isset($start_date) ? $start_date->format($format) : NULL,
+      '#default_value' => array(
+          'date' => format_date($start_date, 'custom', DATE_FORMAT_DATE),
+          'time' => format_date($start_date, 'custom', DATE_FORMAT_TIME),
+        ),
+      '#attributes' => $date_attributes,
     );
 
     $form['scheduler']['date_end'] = array(
-      '#type' => 'textfield',
+      '#type' => 'html_datetime',
       '#title' => t('End time'),
-      '#description' => t('E.g., @date', array('@date' => $now_formatted)),
-      '#default_value' => isset($end_date) ? $end_date->format($format) : NULL,
+      '#default_value' => array(
+        'date' => format_date($end_date, 'custom', DATE_FORMAT_DATE),
+        'time' => format_date($end_date, 'custom', DATE_FORMAT_TIME),
+      ),
+      '#attributes' => $date_attributes,
     );
 
     $form['scheduler']['restriction_method'] = array(
@@ -94,78 +109,32 @@ function webform_scheduler_form_webform_configure_form_alter($form, $form_state)
       '#default_value' => isset($settings['msg_after']) ? $settings['msg_after'] : '',
     );
 
-    // These additions/modifications to the form elements are made if the
-
-    // date_popup module is available.
-
-    if (module_exists('date_popup')) {
-      $date_popup = array(
-        '#type' => 'date_popup',
-        '#date_year_range' => '0:+3',
-        '#description' => NULL,
-      );
-
-      $form['scheduler']['date_start'] = array_merge($form['scheduler']['date_start'], $date_popup);
-      $form['scheduler']['date_end'] = array_merge($form['scheduler']['date_end'], $date_popup);
-    }
   }
 }
 
 /**
  * Additional validation handler for validating webform scheduler settings.
  */
-function webform_scheduler_form_webform_configure_form_validate($form, $form_state) {
-  $values = $form_state['values']['scheduler'];
-  $format = _webform_scheduler_date_format();
+function webform_scheduler_form_webform_configure_form_validate(&$form, &$form_state) {
+  $values =& $form_state['values']['scheduler'];
 
-  if (!empty($values['date_start'])) {
-    // Make a new DateObject (supplied by date_api) from the user input.
-
-    $start_date = new DateTime($values['date_start'] . (module_exists('date_popup') ? ':00' : ''), NULL, $format);
-
-    // If there are any mismatches between the user input and the expected
-
-    // format, display an error to the user with a helpful link to the
-
-    // date_popup module to make life so much easier.
-
-    if (isset($start_date->errors['invalid'])) {
-      form_set_error('date_start', $start_date->errors['invalid'] . ' ' . (!module_exists('date_popup')?t('Install and enable the Date Popup module included in !date_link for an easy pop-up calendar.', array('!date_link' => l('Date', 'http://drupal.org/project/date'))) : ''));
-    }
-    // Else, we can save the timestamp which is used by the submit handler.
-
-    else {
-      $values['date_start_timestamp'] = $start_date->format('U');
-    }
-  }
-
-  if (!empty($values['date_end'])) {
-    $end_date = new DateTime($values['date_end'] . (module_exists('date_popup') ? ':00' : ''), NULL, $format);
-
-    if (isset($end_date->errors['invalid'])) {
-      form_set_error('date_end', $end_date->errors['invalid'] . ' ' . (!module_exists('date_popup')?t('Install and enable the Date Popup module included in !date_link for an easy pop-up calendar.', array('!date_link' => l('Date', 'http://drupal.org/project/date'))) : ''));
-    }
-    else {
-      $values['date_end_timestamp'] = $end_date->format('U');
-    }
-  }
+  $values['date_start_timestamp'] = (!empty($values['date_start'])) ? date('U', strtotime(implode(' ', $values['date_start']))) : '';
+  $values['date_end_timestamp'] = (!empty($values['date_end'])) ? date('U', strtotime(implode(' ', $values['date_end']))) : '';
 
   // If for some reason the user selected an end date that occurs before
-
   // the start date, they made a mistake.
-
   if (isset($values['date_start_timestamp'])
      && isset($values['date_end_timestamp'])
      && $values['date_end_timestamp'] <= $values['date_start_timestamp']) {
-    form_set_error('date_end', t('The end time cannot be before the start time.'));
+    form_set_error('date_end', t('The end time must be after the start time.'));
   }
 }
 
 /**
  * Additional submit handler for saving webform scheduler settings.
  */
-function webform_scheduler_form_webform_configure_form_submit($form, $form_state) {
-  $values = $form_state['values']['scheduler'];
+function webform_scheduler_form_webform_configure_form_submit(&$form, &$form_state) {
+  $values =& $form_state['values']['scheduler'];
   $settings = _webform_scheduler_webform_scheduler_settings($form['nid']['#value']);
 
   if (empty($settings) ||
@@ -186,20 +155,6 @@ function webform_scheduler_form_webform_configure_form_submit($form, $form_state
     // Insert or update the scheduler settings of this webform.
 
     backdrop_write_record('webform_scheduler', $record, empty($settings)?array() : 'nid');
-  }
-}
-
-/**
- * Implements hook_date_popup_pre_validate_alter().
- */
-function webform_scheduler_date_popup_pre_validate_alter($element, $form_state, $input) {
-  if (0 === strpos($element['#name'], 'scheduler[date_')) {
-    // If date is given but time is not, give midnight as the time.
-
-    if (!empty($input['date']) && empty($input['time'])) {
-      $exploded_format = explode(' ', $element['#date_format']);
-      $input['time'] = date(end($exploded_format), strtotime('today midnight'));
-    }
   }
 }
 
@@ -235,8 +190,6 @@ function webform_scheduler_node_view($node, $view_mode) {
         $node->webform['status'] = 0;
       case 2:
         // @see webform_scheduler_form_webform_client_form_alter()
-
-
         if (($node->webform['scheduler']['begin'] > 0 && REQUEST_TIME < $node->webform['scheduler']['begin']) && $node->webform['scheduler']['msg_before'] != '') {
           backdrop_set_message(t($node->webform['scheduler']['msg_before']), 'warning');
         }
@@ -251,7 +204,7 @@ function webform_scheduler_node_view($node, $view_mode) {
 /**
  * Implements hook_form_FORM_ID_alter().
  */
-function webform_scheduler_form_webform_client_form_alter($form, $form_state) {
+function webform_scheduler_form_webform_client_form_alter(&$form, &$form_state) {
   $node = $form['#node'];
 
   if (isset($node->webform['scheduler']) && $node->webform['scheduler']['disabled'] && $node->webform['status'] !== 0) {
@@ -313,17 +266,6 @@ function _webform_scheduler_webform_scheduler_settings($nid) {
   }
 
   return $db_settings;
-}
-
-/**
- * Fetch the date/time format for this module.
- *
- * @return string
- *   A date/time format understandable by PHP's date().
- */
-function _webform_scheduler_date_format() {
-  // TODO This variable was probably removed in Backdrop without replacement.
-  return module_exists('date_popup')?DATE_FORMAT_DATETIME : variable_get('date_format_short', 'm/d/Y - H:i');
 }
 
 /**
