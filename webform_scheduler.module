@@ -24,8 +24,6 @@ function webform_scheduler_permission() {
  */
 function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_state, $form_id) {
   if (user_access('schedule webforms')) {
-    $start_date = time();
-    $end_date = time();
     $settings = _webform_scheduler_webform_scheduler_settings($form['nid']['#value']);
 
     $form['#validate'][] = 'webform_scheduler_form_webform_configure_form_validate';
