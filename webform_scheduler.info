@@ -4,4 +4,3 @@ package = Webform
 backdrop = 1.x
 type = module
 dependencies[] = webform
-dependencies[] = date_api
