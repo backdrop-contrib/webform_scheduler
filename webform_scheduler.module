@@ -30,8 +30,10 @@ function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_stat
     $form['#submit'][] = 'webform_scheduler_form_webform_configure_form_submit';
     $form['#attached']['css'][] = backdrop_get_path('module', 'webform_scheduler') . '/css/webform_scheduler.admin.css';
 
-    $start_date = (!empty($settings['begin_date'])) ? $settings['begin_date'] : NULL;
-    $end_date = (!empty($settings['end_date'])) ? $settings['end_date'] : NULL;
+    $start_date = (!empty($settings['begin_date'])) ? format_date($settings['begin_date'], 'custom', DATE_FORMAT_DATE) : NULL;
+    $start_time = (!empty($settings['begin_date'])) ? format_date($settings['begin_date'], 'custom', DATE_FORMAT_TIME) : NULL;
+    $end_date = (!empty($settings['end_date'])) ? format_date($settings['end_date'], 'custom', DATE_FORMAT_DATE) : NULL;
+    $end_time = (!empty($settings['end_date'])) ? format_date($settings['end_date'], 'custom', DATE_FORMAT_TIME) : NULL;
 
     $form['scheduler'] = array(
       '#type' => 'fieldset',
@@ -64,8 +66,8 @@ function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_stat
       '#type' => 'html_datetime',
       '#title' => t('Start time'),
       '#default_value' => array(
-          'date' => format_date($start_date, 'custom', DATE_FORMAT_DATE),
-          'time' => format_date($start_date, 'custom', DATE_FORMAT_TIME),
+          'date' => $start_date,
+          'time' => $start_time,
         ),
       '#attributes' => $date_attributes,
     );
@@ -74,8 +76,8 @@ function webform_scheduler_form_webform_configure_form_alter(&$form, &$form_stat
       '#type' => 'html_datetime',
       '#title' => t('End time'),
       '#default_value' => array(
-        'date' => format_date($end_date, 'custom', DATE_FORMAT_DATE),
-        'time' => format_date($end_date, 'custom', DATE_FORMAT_TIME),
+        'date' => $end_date,
+        'time' => $end_time,
       ),
       '#attributes' => $date_attributes,
     );
